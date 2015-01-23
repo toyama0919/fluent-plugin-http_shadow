@@ -1,0 +1,9 @@
+Gemfile.lock
+doc/
+pkg/
+**/*.gem
+.yardoc/
+.bundle/
+vendor/bundle/
+.tags
+tmp/
