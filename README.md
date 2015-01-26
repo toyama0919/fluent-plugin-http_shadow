@@ -81,10 +81,9 @@ GET http://staging.exsample.com/hoge/?id=1
 </match>
 ```
 
-#### output
-```
+## note
 
-```
+default GET Request.
 
 ## parameter
 
