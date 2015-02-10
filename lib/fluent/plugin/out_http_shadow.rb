@@ -74,7 +74,7 @@ module Fluent
       params.merge(record[@params_key]) unless record[@params_key].nil?
 
       option = {
-        timeout: @timeout * 1000,
+        timeout: @timeout,
         followlocation: true,
         method: method,
         params: params,
