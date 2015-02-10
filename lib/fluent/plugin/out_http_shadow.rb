@@ -1,34 +1,32 @@
-require 'json'
 module Fluent
-  class HttpShadowOutput < Fluent::Output
+  class HttpShadowOutput < Fluent::BufferedOutput
     Fluent::Plugin.register_output('http_shadow', self)
 
     def initialize
       super
       require 'uri'
-      require 'net/http'
       require 'erb'
+      require 'typhoeus'
+      require "addressable/uri"
     end
 
     config_param :host, :string, :default => nil
     config_param :host_key, :string, :default => nil
     config_param :host_hash, :hash, :default => nil
     config_param :path_format, :string
-    config_param :method_key, :string
+    config_param :method_key, :string, :default => nil
     config_param :header_hash, :hash, :default => nil
     config_param :cookie_hash, :hash, :default => nil
     config_param :params_key, :string, :default => nil
+    config_param :max_concurrency, :integer, :default => 10
+    config_param :timeout, :integer, :default => 5
+    config_param :username, :string, :default => nil
+    config_param :password, :string, :default => nil
 
     def configure(conf)
       super
-      if host
-        @http = Net::HTTP.new(host)
-      else
-        @host_hash = Hash[@host_hash.map { |k,v| [k, Net::HTTP.new(v)] }]
-      end
       @regexp = /\$\{([^}]+)\}/
-      @path_format = @path_format.gsub(@regexp, "<%=record['" + '\1' + "'] %>")
-      @path_format = ERB.new(@path_format)
+      @path_format = ERB.new(@path_format.gsub(@regexp, "<%=record['" + '\1' + "'] %>"))
 
       @headers = get_formatter(@header_hash)
       @cookies = get_formatter(@cookie_hash)
@@ -42,38 +40,49 @@ module Fluent
       super
     end
 
-    def emit(tag, es, chain)
-      chain.next
-      es.each {|time,record|
-        http = @http || @host_hash[record[@host_key]]
-        next if http.nil?
-        send_request(http, record)
-      }
+    def format(tag, time, record)
+      [tag, time, record].to_msgpack
     end
 
-    def send_request(http, record)
-      method = record[@method_key] || 'GET'
+    def write(chunk)
+      records = []
+      chunk.msgpack_each do |tag, time, record|
+        records << record
+      end
+      send_request_parallel(records)
+    end
 
+    private
+
+    def send_request_parallel(records)
+      hydra = Typhoeus::Hydra.new(max_concurrency: @max_concurrency)
+      records.each do |record|
+        host = @host || @host_hash[record[@host_key]]
+        next if host.nil?
+        hydra.queue(get_request(host, record))
+      end
+      hydra.run
+    end
+
+    def get_request(host, record)
+      method = (record[@method_key] || 'get').downcase.to_sym
       path = @path_format.result(binding)
-      params = record[@params_key]
-      unless params.nil?
-        path = add_query_string(path, record, params) if method !~ /POST/i
-      end
-      req = Net::HTTP.const_get(method.capitalize).new(path)
-      unless params.nil?
-        req.set_form_data(params, "&") if method =~ /POST/i
-      end
-      req = set_header(req, record)
-      req['Cookie'] = get_cookie_string(record) if @cookie_hash
-      response = http.request(req)
-    end
 
-    def add_query_string(path, record, params)
-      uri = URI.parse(path)
-      params_string = params.collect { |k,v| "#{k}=#{CGI::escape(v.to_s)}" }.join('&')
-      join_string = uri.query.nil? ? '?' : '&'
-      path = path + join_string + params_string
-      path
+      url = "http://" + host + path
+      uri = Addressable::URI.parse(url)
+      params = uri.query_values
+      params.merge(record[@params_key]) unless record[@params_key].nil?
+
+      option = {
+        timeout: @timeout * 1000,
+        followlocation: true,
+        method: method,
+        params: params,
+        headers: get_header(record)
+      }
+      option[:userpwd] = "#{@username}:#{@password}" if @username
+
+      Typhoeus::Request.new("http://" + host + uri.path, option)
     end
 
     def get_formatter(hash)
@@ -86,17 +95,27 @@ module Fluent
       formatter
     end
 
-    def set_header(req, record)
-      @headers.each do |k, v|
-        req[k] = v.result(binding)
+    def get_params(query, record_params)
+      params = query.nil? ? {} : Hash[URI::decode_www_form(query)]
+      if record_params
+        params = params.merge(record_params)
       end
-      req
+      params
+    end
+
+    def get_header(record)
+      header = {}
+      @headers.each do |k, v|
+        header[k] = v.result(binding)
+      end
+      header['Cookie'] = get_cookie_string(record) if @cookie_hash
+      header
     end
 
     def get_cookie_string(record)
       @cookies.map{|k, v|
         "#{k}=#{v.result(binding)}"
-      }.join(';')
+      }.join('; ')
     end
   end
 end

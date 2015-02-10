@@ -15,6 +15,8 @@ Gem::Specification.new do |gem|
   gem.test_files    = gem.files.grep(%r{^(test|spec|features)/})
   gem.require_paths = ['lib']
 
+  gem.add_runtime_dependency "typhoeus"
+  gem.add_runtime_dependency "addressable"
   gem.add_development_dependency 'bundler', '~> 1.7.2'
   gem.add_development_dependency 'fluentd', '~> 0.10.58'
   gem.add_development_dependency 'pry', '~> 0.10.1'
