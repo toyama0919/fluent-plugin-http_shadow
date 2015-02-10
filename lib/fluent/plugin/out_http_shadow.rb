@@ -22,6 +22,7 @@ module Fluent
     config_param :timeout, :integer, :default => 5
     config_param :username, :string, :default => nil
     config_param :password, :string, :default => nil
+    config_param :rate, :integer, :default => 100
 
     def configure(conf)
       super
@@ -49,7 +50,8 @@ module Fluent
       chunk.msgpack_each do |tag, time, record|
         records << record
       end
-      send_request_parallel(records)
+      sampling_size = (records.size * (@rate * 0.01)).to_i
+      send_request_parallel(records.sample(sampling_size))
     end
 
     private
