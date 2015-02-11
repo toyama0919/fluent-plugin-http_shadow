@@ -26,6 +26,10 @@ module Fluent
 
     def configure(conf)
       super
+      if @host.nil? && @host_hash.nil?
+        raise ConfigError, "out_http_shadow: required to @host or @host_hash."
+      end
+
       @regexp = /\$\{([^}]+)\}/
       @path_format = ERB.new(@path_format.gsub(@regexp, "<%=record['" + '\1' + "'] %>"))
 
