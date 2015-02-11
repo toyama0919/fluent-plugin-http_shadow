@@ -97,14 +97,6 @@ module Fluent
       formatter
     end
 
-    def get_params(query, record_params)
-      params = query.nil? ? {} : Hash[URI::decode_www_form(query)]
-      if record_params
-        params = params.merge(record_params)
-      end
-      params
-    end
-
     def get_header(record)
       header = {}
       @headers.each do |k, v|
