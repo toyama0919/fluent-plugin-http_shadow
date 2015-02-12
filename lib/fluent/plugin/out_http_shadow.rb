@@ -4,7 +4,6 @@ module Fluent
 
     def initialize
       super
-      require 'uri'
       require 'erb'
       require 'typhoeus'
       require "addressable/uri"
