@@ -54,7 +54,7 @@ module Fluent
         records << record
       end
       sampling_size = (records.size * (@rate * 0.01)).to_i
-      send_request_parallel(records.sample(sampling_size))
+      send_request_parallel(records.first(sampling_size))
     end
 
     private
