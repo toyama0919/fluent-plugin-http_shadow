@@ -28,16 +28,15 @@ module Fluent
       if @host.nil? && @host_hash.nil?
         raise ConfigError, "out_http_shadow: required to @host or @host_hash."
       end
+    end
 
+    def start
+      super
       @regexp = /\$\{([^}]+)\}/
       @path_format = ERB.new(@path_format.gsub(@regexp, "<%=record['" + '\1' + "'] %>"))
 
       @headers = get_formatter(@header_hash)
       @cookies = get_formatter(@cookie_hash)
-    end
-
-    def start
-      super
     end
 
     def shutdown
