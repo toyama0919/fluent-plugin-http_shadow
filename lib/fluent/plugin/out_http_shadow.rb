@@ -54,6 +54,13 @@ module Fluent
         records << record
       end
       sampling_size = (records.size * (@rate * 0.01)).to_i
+      if @rate > 100
+        orig_records = records.dup
+        loop do
+          records.concat(orig_records)
+          break if sampling_size < records.size
+        end
+      end
       send_request_parallel(records.first(sampling_size))
     end
 
