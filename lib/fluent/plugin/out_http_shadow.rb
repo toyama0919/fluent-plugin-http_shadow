@@ -22,6 +22,7 @@ module Fluent
     config_param :username, :string, :default => nil
     config_param :password, :string, :default => nil
     config_param :rate, :integer, :default => 100
+    config_param :replace_hash, :hash, :default => nil
 
     def configure(conf)
       super
@@ -78,11 +79,13 @@ module Fluent
     def get_request(host, record)
       method = (record[@method_key] || 'get').downcase.to_sym
       path = @path_format.result(binding)
+      path = replace_string(path) if @replace_hash
 
       url = "http://" + host + path
       uri = Addressable::URI.parse(url)
       params = uri.query_values
       params.merge(record[@params_key]) unless record[@params_key].nil?
+      params = replace_params(params) if @replace_hash && params
 
       option = {
         timeout: @timeout,
@@ -113,6 +116,18 @@ module Fluent
       end
       header['Cookie'] = get_cookie_string(record) if @cookie_hash
       header
+    end
+
+    def replace_string(str)
+      return nil if str.nil?
+      @replace_hash.each do |k, v|
+        str = str.gsub(k, v)
+      end
+      str
+    end
+
+    def replace_params(params)
+      Hash[params.map { |k,v| [k, replace_string(v)] }]
     end
 
     def get_cookie_string(record)
