@@ -7,6 +7,7 @@ module Fluent
       require 'erb'
       require 'typhoeus'
       require "addressable/uri"
+      require 'string/scrub' if RUBY_VERSION.to_f < 2.1
     end
 
     config_param :host, :string, :default => nil
@@ -121,7 +122,7 @@ module Fluent
     def replace_string(str)
       return nil if str.nil?
       @replace_hash.each do |k, v|
-        str = str.gsub(k, v)
+        str = str.scrub.gsub(k, v)
       end
       str
     end
