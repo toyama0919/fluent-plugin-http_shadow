@@ -60,6 +60,7 @@ GET http://staging.exsample.com/hoge/?id=1
   host_key host
   path_format ${path}
   method_key method
+  protocol_format ${x_forwarded_proto} # default: http
   header_hash { "Referer": "${referer}", "User-Agent": "${user_agent}" }
 </match>
 ```

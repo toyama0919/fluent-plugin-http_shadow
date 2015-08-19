@@ -1,6 +1,7 @@
 module Fluent
   class HttpShadowOutput < Fluent::BufferedOutput
     Fluent::Plugin.register_output('http_shadow', self)
+    SUPPORT_PROTOCOLS = ['http', 'https']
 
     def initialize
       super
@@ -24,6 +25,7 @@ module Fluent
     config_param :password, :string, :default => nil
     config_param :rate, :integer, :default => 100
     config_param :replace_hash, :hash, :default => nil
+    config_param :protocol_format, :string, :default => 'http'
 
     def configure(conf)
       super
@@ -36,6 +38,7 @@ module Fluent
       super
       @regexp = /\$\{([^}]+)\}/
       @path_format = ERB.new(@path_format.gsub(@regexp, "<%=record['" + '\1' + "'] %>"))
+      @protocol_format = ERB.new(@protocol_format.gsub(@regexp, "<%=record['" + '\1' + "'] %>"))
 
       @headers = get_formatter(@header_hash)
       @cookies = get_formatter(@cookie_hash)
@@ -81,8 +84,10 @@ module Fluent
       method = (record[@method_key] || 'get').downcase.to_sym
       path = @path_format.result(binding)
       path = replace_string(path) if @replace_hash
+      protocol = @protocol_format.result(binding)
+      protocol = SUPPORT_PROTOCOLS.include?(protocol) ? protocol : 'http'
 
-      url = "http://" + host + path
+      url = "#{protocol}://" + host + path
       uri = Addressable::URI.parse(url)
       params = uri.query_values
       params.merge(record[@params_key]) unless record[@params_key].nil?
@@ -97,7 +102,7 @@ module Fluent
       }
       option[:userpwd] = "#{@username}:#{@password}" if @username
 
-      Typhoeus::Request.new("http://" + host + uri.path, option)
+      Typhoeus::Request.new("#{protocol}://" + host + uri.path, option)
     end
 
     def get_formatter(hash)
