@@ -34,6 +34,7 @@ Assume following input is coming:
     "path": "/hoge/?id=1",
     "code": "200",
     "size": "1578",
+    "x_forwarded_proto": "http",
     "referer": "http://exsample.com/other/",
     "agent": "Mozilla/5.0 (Windows NT 6.1; Trident/7.0; rv:11.0) like Gecko"
   }
@@ -62,6 +63,7 @@ GET http://staging.exsample.com/hoge/?id=1
   method_key method
   protocol_format ${x_forwarded_proto} # default: http
   header_hash { "Referer": "${referer}", "User-Agent": "${user_agent}" }
+  no_send_header_pattern ^(-|)$
 </match>
 ```
 
