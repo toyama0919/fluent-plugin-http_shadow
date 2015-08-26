@@ -26,6 +26,7 @@ module Fluent
     config_param :rate, :integer, :default => 100
     config_param :replace_hash, :hash, :default => nil
     config_param :protocol_format, :string, :default => 'http'
+    config_param :no_send_header_pattern, :string, :default => nil
 
     def configure(conf)
       super
@@ -42,6 +43,10 @@ module Fluent
 
       @headers = get_formatter(@header_hash)
       @cookies = get_formatter(@cookie_hash)
+
+      if @no_send_header_pattern
+        @no_send_header_pattern = Regexp.new(@no_send_header_pattern)
+      end
     end
 
     def shutdown
@@ -115,15 +120,6 @@ module Fluent
       formatter
     end
 
-    def get_header(record)
-      header = {}
-      @headers.each do |k, v|
-        header[k] = v.result(binding)
-      end
-      header['Cookie'] = get_cookie_string(record) if @cookie_hash
-      header
-    end
-
     def replace_string(str)
       return nil if str.nil?
       @replace_hash.each do |k, v|
@@ -136,10 +132,31 @@ module Fluent
       Hash[params.map { |k,v| [k, replace_string(v)] }]
     end
 
+    def get_header(record)
+      header = {}
+      @headers.each do |k, v|
+        value = v.result(binding)
+        if @no_send_header_pattern
+          header[k] = value unless @no_send_header_pattern.match(value)
+        else
+          header[k] = value
+        end
+      end
+      header['Cookie'] = get_cookie_string(record) if @cookie_hash
+      header
+    end
+
     def get_cookie_string(record)
-      @cookies.map{|k, v|
-        "#{k}=#{v.result(binding)}"
-      }.join('; ')
+      cookie = []
+      @cookies.each do |k, v|
+        value = v.result(binding)
+        if @no_send_header_pattern
+          cookie << "#{k}=#{value}" unless @no_send_header_pattern.match(value)
+        else
+          cookie << "#{k}=#{value}"
+        end
+      end
+      cookie.join('; ')
     end
   end
 end
