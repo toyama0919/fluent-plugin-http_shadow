@@ -2,6 +2,10 @@
 
 copy http request. use shadow proxy server.
 
+![Qiita](https://embed.gyazo.com/59d5fe9c4430325f6ad59c638971cc25.png "Qiita")
+
+restored the http request from the logs that are sent to the fluentd.
+
 ## Examples
 ```
 <source>
