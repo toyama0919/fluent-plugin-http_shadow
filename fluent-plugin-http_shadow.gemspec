@@ -18,8 +18,8 @@ Gem::Specification.new do |gem|
   gem.add_runtime_dependency "typhoeus"
   gem.add_runtime_dependency "addressable"
   gem.add_runtime_dependency "string-scrub" if RUBY_VERSION.to_f < 2.1
-  gem.add_development_dependency 'bundler', '~> 1.7.2'
-  gem.add_development_dependency 'fluentd', '~> 0.10.58'
+  gem.add_development_dependency 'bundler'
+  gem.add_development_dependency 'fluentd'
   gem.add_development_dependency 'pry', '~> 0.10.1'
   gem.add_development_dependency 'rake', '~> 10.3.2'
   gem.add_development_dependency 'rubocop', '~> 0.24.1'
