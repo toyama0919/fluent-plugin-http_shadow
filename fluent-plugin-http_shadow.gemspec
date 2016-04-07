@@ -2,7 +2,7 @@
 
 Gem::Specification.new do |gem|
   gem.name          = "fluent-plugin-http_shadow"
-  gem.version       = "0.0.9"
+  gem.version       = "0.1.0"
   gem.summary       = %q{copy http request. use shadow proxy server.}
   gem.description   = %q{copy http request. use shadow proxy server.}
   gem.license       = "MIT"
