@@ -2,6 +2,8 @@ module Fluent
   class HttpShadowOutput < Fluent::BufferedOutput
     Fluent::Plugin.register_output('http_shadow', self)
     SUPPORT_PROTOCOLS = ['http', 'https']
+    PLACEHOLDER_REGEXP = /\$\{([^}]+)\}/
+    ERB_REGEXP = "<%=record['" + '\1' + "'] %>"
 
     def initialize
       super
@@ -37,15 +39,14 @@ module Fluent
 
     def start
       super
-      @regexp = /\$\{([^}]+)\}/
-      @path_format = ERB.new(@path_format.gsub(@regexp, "<%=record['" + '\1' + "'] %>"))
-      @protocol_format = ERB.new(@protocol_format.gsub(@regexp, "<%=record['" + '\1' + "'] %>"))
+      @path_format = ERB.new(@path_format.gsub(PLACEHOLDER_REGEXP, ERB_REGEXP))
+      @protocol_format = ERB.new(@protocol_format.gsub(PLACEHOLDER_REGEXP, ERB_REGEXP))
 
       @headers = get_formatter(@header_hash)
       @cookies = get_formatter(@cookie_hash)
 
       if @no_send_header_pattern
-        @no_send_header_pattern = Regexp.new(@no_send_header_pattern)
+        @no_send_header_pattern = /#{@no_send_header_pattern}/
       end
     end
 
@@ -92,7 +93,8 @@ module Fluent
       protocol = @protocol_format.result(binding)
       protocol = SUPPORT_PROTOCOLS.include?(protocol) ? protocol : 'http'
 
-      url = "#{protocol}://" + host + path
+      base_url = "#{protocol}://" + host
+      url = base_url + path
       uri = Addressable::URI.parse(url)
       params = uri.query_values
       params.merge(record[@params_key]) unless record[@params_key].nil?
@@ -107,14 +109,14 @@ module Fluent
       }
       option[:userpwd] = "#{@username}:#{@password}" if @username
 
-      Typhoeus::Request.new("#{protocol}://" + host + uri.path, option)
+      Typhoeus::Request.new(base_url + uri.path, option)
     end
 
     def get_formatter(hash)
       formatter = {}
       return formatter unless hash
       hash.each do |k, v|
-        format = v.gsub(@regexp,  "<%=record['" + '\1' + "'] %>")
+        format = v.gsub(PLACEHOLDER_REGEXP, ERB_REGEXP)
         formatter[k] = ERB.new(format)
       end
       formatter
@@ -137,7 +139,7 @@ module Fluent
       @headers.each do |k, v|
         value = v.result(binding)
         if @no_send_header_pattern
-          header[k] = value unless @no_send_header_pattern.match(value)
+          header[k] = value unless @no_send_header_pattern =~ value
         else
           header[k] = value
         end
@@ -150,10 +152,11 @@ module Fluent
       cookie = []
       @cookies.each do |k, v|
         value = v.result(binding)
+        pair = "#{k}=#{value}"
         if @no_send_header_pattern
-          cookie << "#{k}=#{value}" unless @no_send_header_pattern.match(value)
+          cookie << pair unless @no_send_header_pattern =~ value
         else
-          cookie << "#{k}=#{value}"
+          cookie << pair
         end
       end
       cookie.join('; ')
