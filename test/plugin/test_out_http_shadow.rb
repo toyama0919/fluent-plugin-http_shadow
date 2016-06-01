@@ -37,6 +37,101 @@ class HttpShadowOutputTest < Test::Unit::TestCase
       ]
     end
   end
+
+  def test_get_cookie_string
+    d = create_driver %[
+      host google.com
+      path_format ${path}
+      method_key method
+      path_format ${url}
+      method_key method
+      header_hash { "Referer": "${referer}", "X-Forwarded-For": "${ip_address}" }
+      cookie_hash { "cookie1": "${cookie1}", "cookie2": "${cookie2}"}
+      flush_interval 10
+    ]
+    d.instance.start
+    cookie_string = d.instance.send(:get_cookie_string, { 'cookie1' => 'value1'})
+    assert_equal cookie_string, "cookie1=value1; cookie2="
+
+    cookie_string = d.instance.send(:get_cookie_string, { 'cookie1' => 'value1', 'cookie2' => 'value2' })
+    assert_equal cookie_string, "cookie1=value1; cookie2=value2"
+  end
+
+  def test_get_cookie_string_no_send_header_pattern
+    d = create_driver %[
+      host google.com
+      path_format ${path}
+      method_key method
+      path_format ${url}
+      method_key method
+      header_hash { "Referer": "${referer}", "X-Forwarded-For": "${ip_address}" }
+      cookie_hash { "cookie1": "${cookie1}", "cookie2": "${cookie2}", "cookie3": "${cookie3}" }
+      no_send_header_pattern ^(-|)$
+      flush_interval 10
+    ]
+    d.instance.start
+
+    cookie_string = d.instance.send(:get_cookie_string, { 'cookie1' => '-', 'cookie2' => '', 'cookie3' => 'value3' })
+    assert_equal cookie_string, "cookie3=value3"
+
+    cookie_string = d.instance.send(:get_cookie_string, { 'cookie1' => '-', 'cookie2' => '', 'cookie3' => '' })
+    assert_equal cookie_string, ""
+  end
+
+  def test_get_header
+    d = create_driver %[
+      host google.com
+      path_format ${path}
+      method_key method
+      path_format ${url}
+      method_key method
+      header_hash { "Referer": "${referer}?hub=param", "X-Forwarded-For": "${ip_address}", "User-Agent": "${user_agent}" }
+      cookie_hash { "cookie1": "${cookie1}"}
+      flush_interval 10
+    ]
+    d.instance.start
+    header = d.instance.send(
+      :get_header,
+      {
+        'referer' => 'http://eetimes.jp/ee/articles/1407/30/news071.html',
+        'ip_address' => '10.10.10.10',
+        'user_agent' => 'Mozilla/5.0 (Windows NT 6.2; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.124 Safari/537.36',
+        'cookie1' => 'value1'
+      }
+    )
+    assert_equal header['Referer'], "http://eetimes.jp/ee/articles/1407/30/news071.html?hub=param"
+    assert_equal header['X-Forwarded-For'], "10.10.10.10"
+    assert_equal header['User-Agent'], "Mozilla/5.0 (Windows NT 6.2; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.124 Safari/537.36"
+    assert_equal header['Cookie'], "cookie1=value1"
+  end
+
+  def test_get_header_no_send_header_pattern
+    d = create_driver %[
+      host google.com
+      path_format ${path}
+      method_key method
+      path_format ${url}
+      method_key method
+      header_hash { "Referer": "${referer}", "X-Forwarded-For": "${ip_address}", "User-Agent": "${user_agent}" }
+      cookie_hash { "cookie1": "${cookie1}"}
+      no_send_header_pattern ^(-|)$
+      flush_interval 10
+    ]
+    d.instance.start
+    header = d.instance.send(
+      :get_header,
+      {
+        'referer' => '-',
+        'ip_address' => '10.10.10.10',
+        'user_agent' => '',
+        'cookie1' => 'value1'
+      }
+    )
+    assert_equal header['Referer'], nil
+    assert_equal header['X-Forwarded-For'], "10.10.10.10"
+    assert_equal header['User-Agent'], nil
+    assert_equal header['Cookie'], "cookie1=value1"
+  end
 end
 
 
