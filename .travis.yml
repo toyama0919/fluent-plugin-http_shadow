@@ -1,15 +1,20 @@
 language: ruby
 
 rvm:
-  - 1.9.3
-  - 2.0.0
-  - 2.1
-
-os:
-  - linux
-  - osx
+  - 2.0.*
+  - 2.1.*
+  - 2.2.*
+  - 2.3.0
 
 gemfile:
   - Gemfile
+  - Gemfile.fluentd.0.12
+
+matrix:
+  exclude:
+    - rvm: 2.0.*
+      gemfile: Gemfile
+
+before_install: gem update bundler
 
 script: 'bundle exec rake test'
