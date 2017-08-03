@@ -2,6 +2,7 @@ module Fluent
   class HttpShadowOutput < Fluent::BufferedOutput
     Fluent::Plugin.register_output('http_shadow', self)
     SUPPORT_PROTOCOLS = ['http', 'https']
+    SUPPORT_METHODS = [:get, :head, :post, :put, :delete]
     PLACEHOLDER_REGEXP = /\$\{([^}]+)\}/
     ERB_REGEXP = "<%=record['" + '\1' + "'] %>"
 
@@ -84,6 +85,7 @@ module Fluent
         next if host.nil?
         request = get_request(host, record)
         method = request.options[:method]
+        next unless SUPPORT_METHODS.include?(method)
         if @rate_per_method_hash
           rate_per_method = @rate_per_method_hash[method.to_s] || 100
           hydra.queue(request) if (Random.rand(100) < rate_per_method)
