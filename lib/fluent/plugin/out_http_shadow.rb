@@ -26,6 +26,7 @@ module Fluent
     config_param :username, :string, :default => nil
     config_param :password, :string, :default => nil
     config_param :rate, :integer, :default => 100
+    config_param :rate_per_method_hash, :hash, :default => nil
     config_param :replace_hash, :hash, :default => nil
     config_param :protocol_format, :string, :default => 'http'
     config_param :no_send_header_pattern, :string, :default => nil
@@ -81,7 +82,14 @@ module Fluent
       records.each do |record|
         host = @host || @host_hash[record[@host_key]]
         next if host.nil?
-        hydra.queue(get_request(host, record))
+        request = get_request(host, record)
+        method = request.options[:method]
+        if @rate_per_method_hash
+          rate_per_method = @rate_per_method_hash[method.to_s] || 100
+          hydra.queue(request) if (Random.rand(100) < rate_per_method)
+        else
+          hydra.queue(request)
+        end
       end
       hydra.run
     end
