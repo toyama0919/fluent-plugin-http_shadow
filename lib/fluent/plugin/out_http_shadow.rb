@@ -86,12 +86,7 @@ module Fluent
         request = get_request(host, record)
         method = request.options[:method]
         next unless SUPPORT_METHODS.include?(method)
-        if @rate_per_method_hash
-          rate_per_method = @rate_per_method_hash[method.to_s] || 100
-          hydra.queue(request) if (Random.rand(100) < rate_per_method)
-        else
-          hydra.queue(request)
-        end
+        hydra.queue(request) if rate_per_method(method)
       end
       hydra.run
     end
@@ -170,6 +165,13 @@ module Fluent
         end
       end
       cookie.join('; ')
+    end
+
+    def rate_per_method(method)
+      return true unless @rate_per_method_hash
+
+      rate_per_method = @rate_per_method_hash[method.to_s] || 100
+      return Random.rand(100) < rate_per_method
     end
   end
 end

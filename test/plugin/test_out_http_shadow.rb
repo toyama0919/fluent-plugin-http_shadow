@@ -132,6 +132,24 @@ class HttpShadowOutputTest < Test::Unit::TestCase
     assert_equal header['User-Agent'], nil
     assert_equal header['Cookie'], "cookie1=value1"
   end
+
+  def test_rate_per_method
+    d = create_driver %[
+      host google.com
+      path_format ${path}
+      method_key method
+      path_format ${url}
+      method_key method
+      header_hash { "Referer": "${referer}", "X-Forwarded-For": "${ip_address}" }
+      cookie_hash { "iij-stg1_session": "${session_id}", "___IPROS_UUID_": "${uuid}"}
+      flush_interval 10
+      rate_per_method_hash { "get": 100, "post": 0 }
+    ]
+    d.instance.start
+    assert_true d.instance.send(:rate_per_method, :get)
+    assert_false d.instance.send(:rate_per_method, :post)
+    assert_true d.instance.send(:rate_per_method, :put)
+  end
 end
 
 
