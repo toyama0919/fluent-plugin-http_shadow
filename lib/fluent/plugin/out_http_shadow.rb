@@ -2,7 +2,6 @@ module Fluent
   class HttpShadowOutput < Fluent::BufferedOutput
     Fluent::Plugin.register_output('http_shadow', self)
     SUPPORT_PROTOCOLS = ['http', 'https']
-    SUPPORT_METHODS = [:get, :head, :post, :put, :delete]
     PLACEHOLDER_REGEXP = /\$\{([^}]+)\}/
     ERB_REGEXP = "<%=record['" + '\1' + "'] %>"
 
@@ -31,6 +30,7 @@ module Fluent
     config_param :replace_hash, :hash, :default => nil
     config_param :protocol_format, :string, :default => 'http'
     config_param :no_send_header_pattern, :string, :default => nil
+    config_param :support_methods, :array, :default => nil, :value_type => :string
 
     def configure(conf)
       super
@@ -85,7 +85,7 @@ module Fluent
         next if host.nil?
         request = get_request(host, record)
         method = request.options[:method]
-        next unless SUPPORT_METHODS.include?(method)
+        next unless supported?(method)
         hydra.queue(request) if rate_per_method(method)
       end
       hydra.run
@@ -165,6 +165,11 @@ module Fluent
         end
       end
       cookie.join('; ')
+    end
+
+    def supported?(method)
+      return true unless @support_methods
+      return @support_methods.include?(method.to_s)
     end
 
     def rate_per_method(method)
