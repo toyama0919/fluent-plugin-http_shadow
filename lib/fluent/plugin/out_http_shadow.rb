@@ -26,9 +26,11 @@ module Fluent
     config_param :username, :string, :default => nil
     config_param :password, :string, :default => nil
     config_param :rate, :integer, :default => 100
+    config_param :rate_per_method_hash, :hash, :default => nil
     config_param :replace_hash, :hash, :default => nil
     config_param :protocol_format, :string, :default => 'http'
     config_param :no_send_header_pattern, :string, :default => nil
+    config_param :support_methods, :array, :default => nil, :value_type => :string
 
     def configure(conf)
       super
@@ -81,7 +83,10 @@ module Fluent
       records.each do |record|
         host = @host || @host_hash[record[@host_key]]
         next if host.nil?
-        hydra.queue(get_request(host, record))
+        request = get_request(host, record)
+        method = request.options[:method]
+        next unless supported?(method)
+        hydra.queue(request) if rate_per_method(method)
       end
       hydra.run
     end
@@ -160,6 +165,18 @@ module Fluent
         end
       end
       cookie.join('; ')
+    end
+
+    def supported?(method)
+      return true unless @support_methods
+      return @support_methods.include?(method.to_s)
+    end
+
+    def rate_per_method(method)
+      return true unless @rate_per_method_hash
+
+      rate_per_method = @rate_per_method_hash[method.to_s] || 100
+      return Random.rand(100) < rate_per_method
     end
   end
 end
