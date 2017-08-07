@@ -1,4 +1,6 @@
-# fluent-plugin-http_shadow [![Build Status](https://secure.travis-ci.org/toyama0919/fluent-plugin-http_shadow.png?branch=master)](http://travis-ci.org/toyama0919/fluent-plugin-http_shadow)
+# fluent-plugin-http_shadow
+[![Build Status](https://secure.travis-ci.org/toyama0919/fluent-plugin-http_shadow.png?branch=master)](http://travis-ci.org/toyama0919/fluent-plugin-http_shadow)
+[![Gem Version](https://badge.fury.io/rb/fluent-plugin-http_shadow.svg)](http://badge.fury.io/rb/fluent-plugin-http_shadow)
 
 copy http request. use shadow proxy server.
 
